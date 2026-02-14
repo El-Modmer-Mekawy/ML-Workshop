@@ -1,0 +1,231 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "header-ex3",
+   "metadata": {},
+   "source": [
+    "# Exercise 3: Classification\n",
+    "\n",
+    "## Objective\n",
+    "Predict human activity from sensor features using Logistic Regression. Learn how to train a classifier, evaluate its performance, visualize confusion matrices, and test model robustness."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "step-1",
+   "metadata": {},
+   "source": [
+    "## Step 1: Import Libraries\n",
+    "We import the necessary Python libraries for preprocessing, training, evaluation, and visualization."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "imports",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "from sklearn.preprocessing import StandardScaler\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "from sklearn.metrics import accuracy_score, confusion_matrix"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "step-2",
+   "metadata": {},
+   "source": [
+    "## Step 2: Load Data\n",
+    "Load training and test features and labels, and map activity IDs to readable names."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "load-data",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Load activity labels\n",
+    "activity_labels = pd.read_csv('dataset/activity_labels.txt', delim_whitespace=True, header=None, index_col=0)\n",
+    "\n",
+    "# Load training and test features\n",
+    "X_train = pd.read_csv('dataset/X_train.txt', delim_whitespace=True, header=None)\n",
+    "X_test = pd.read_csv('dataset/X_test.txt', delim_whitespace=True, header=None)\n",
+    "\n",
+    "# Load training and test labels\n",
+    "y_train = pd.read_csv('dataset/y_train.txt', header=None)\n",
+    "y_test = pd.read_csv('dataset/y_test.txt', header=None)\n",
+    "\n",
+    "# Map activity IDs to names\n",
+    "y_train_mapped = y_train[0].map(activity_labels[1])\n",
+    "y_test_mapped = y_test[0].map(activity_labels[1])\n",
+    "\n",
+    "print(\"Data loaded. Classes:\", activity_labels[1].unique())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "step-3",
+   "metadata": {},
+   "source": [
+    "## Step 3: Normalize Features\n",
+    "Scale all features using StandardScaler. This helps the Logistic Regression model converge faster and perform better."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "scale-data",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "scaler = StandardScaler()\n",
+    "X_train_scaled = scaler.fit_transform(X_train)\n",
+    "X_test_scaled = scaler.transform(X_test)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "step-4",
+   "metadata": {},
+   "source": [
+    "## Step 4: Train Logistic Regression Model\n",
+    "We train a multi-class Logistic Regression classifier. We use `.ravel()` on the target to avoid a DataConversionWarning."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "train-model",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "clf_model = LogisticRegression(max_iter=1000, multi_class='multinomial', random_state=42)\n",
+    "\n",
+    "# Note: y_train_mapped is a Series, but sklearn prefers a 1D array. \n",
+    "clf_model.fit(X_train_scaled, y_train_mapped)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "step-5",
+   "metadata": {},
+   "source": [
+    "## Step 5: Make Predictions and Evaluate\n",
+    "Predict activity on the test set and compute overall accuracy."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "predict-eval",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "y_pred = clf_model.predict(X_test_scaled)\n",
+    "accuracy = accuracy_score(y_test_mapped, y_pred)\n",
+    "print(f'Accuracy on test set: {accuracy:.4f}')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "step-6",
+   "metadata": {},
+   "source": [
+    "## Step 6: Confusion Matrix\n",
+    "Visualize which activities are most often confused by the classifier."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "confusion-matrix",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "labels = activity_labels[1].tolist()\n",
+    "cm = confusion_matrix(y_test_mapped, y_pred, labels=labels)\n",
+    "\n",
+    "plt.figure(figsize=(10, 8))\n",
+    "sns.heatmap(cm, annot=True, fmt='d', xticklabels=labels, yticklabels=labels, cmap='Blues')\n",
+    "plt.xlabel('Predicted Activity')\n",
+    "plt.ylabel('True Activity')\n",
+    "plt.title('Confusion Matrix of Human Activity Prediction')\n",
+    "plt.xticks(rotation=45)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "step-7",
+   "metadata": {},
+   "source": [
+    "## Step 7: Test Robustness with Noise\n",
+    "Add small random noise to features to check if the model is stable."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "robustness",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Add noise to the standardized test set\n",
+    "noise_factor = 0.1\n",
+    "X_test_noisy = X_test_scaled + np.random.normal(0, noise_factor, X_test_scaled.shape)\n",
+    "\n",
+    "y_pred_noisy = clf_model.predict(X_test_noisy)\n",
+    "accuracy_noisy = accuracy_score(y_test_mapped, y_pred_noisy)\n",
+    "\n",
+    "print(f'Accuracy with noise (factor={noise_factor}): {accuracy_noisy:.4f}')\n",
+    "print(f'Drop in accuracy: {(accuracy - accuracy_noisy):.4f}')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "step-8",
+   "metadata": {},
+   "source": [
+    "## Step 8: Optional Mapping to Robot Actions\n",
+    "If integrating with robotics, predicted activities can trigger robot actions:\n",
+    "- WALKING → Move forward\n",
+    "- WALKING_UPSTAIRS → Ascend slope\n",
+    "- WALKING_DOWNSTAIRS → Descend slope\n",
+    "- SITTING / STANDING → Idle / Stop\n",
+    "- LAYING → Sleep mode"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "step-9",
+   "metadata": {},
+   "source": [
+    "## Step 9: Reflection Questions\n",
+    "1. Which activities are most often confused? (Hint: Look at SITTING vs STANDING in the matrix)\n",
+    "2. How does scaling affect the classifier?\n",
+    "3. How can you improve model robustness and accuracy?"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.10"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
